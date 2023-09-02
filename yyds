@@ -1,0 +1,46 @@
+ // Export data from an annotated dataset.
+  static void exportData(String datasetName, String annotatedDatasetName, String gcsOutputUri)
+      throws IOException {
+    // String datasetName = DataLabelingServiceClient.formatDatasetName(
+    //     "YOUR_PROJECT_ID", "YOUR_DATASETS_UUID");
+    // String annotatedDatasetName = DataLabelingServiceClient.formatAnnotatedDatasetName(
+    //     "YOUR_PROJECT_ID",
+    //     "YOUR_DATASET_UUID",
+    //     "YOUR_ANNOTATED_DATASET_UUID");
+    // String gcsOutputUri = "gs://YOUR_BUCKET_ID/export_path";
+
+    DataLabelingServiceSettings settings =
+        DataLabelingServiceSettings.newBuilder()
+            .build();
+    try (DataLabelingServiceClient dataLabelingServiceClient =
+        DataLabelingServiceClient.create(settings)) {
+      GcsDestination gcsDestination =
+          GcsDestination.newBuilder().setOutputUri(gcsOutputUri).setMimeType("text/csv").build();
+
+      OutputConfig outputConfig =
+          OutputConfig.newBuilder().setGcsDestination(gcsDestination).build();
+
+      ExportDataRequest exportDataRequest =
+          ExportDataRequest.newBuilder()
+              .setName(datasetName)
+              .setOutputConfig(outputConfig)
+              .setAnnotatedDataset(annotatedDatasetName)
+              .build();
+
+      OperationFuture<ExportDataOperationResponse, ExportDataOperationMetadata> operation =
+          dataLabelingServiceClient.exportDataAsync(exportDataRequest);
+
+      ExportDataOperationResponse response = operation.get();
+
+      System.out.format("Exported item count: %d\n", response.getExportCount());
+      LabelStats labelStats = response.getLabelStats();
+      Set<Entry<String, Long>> entries = labelStats.getExampleCountMap().entrySet();
+      for (Entry<String, Long> entry : entries) {
+        System.out.format("\tLabel: %s\n", entry.getKey());
+        System.out.format("\tCount: %d\n\n", entry.getValue());
+      }
+    } catch (IOException | InterruptedException | ExecutionException e) {
+      e.printStackTrace();
+    }
+  }
+}
